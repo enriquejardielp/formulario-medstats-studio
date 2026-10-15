@@ -1,0 +1,6 @@
+{
+  "name": "CliniForm - Formularios Clínicos y Registro de Datos Médicos",
+  "description": "Diseña formularios clínicos personalizados para investigación y práctica médica, agiliza la recolección caso por caso y exporta/fusiona tus bases de datos en Excel y CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
