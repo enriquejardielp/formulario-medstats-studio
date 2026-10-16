@@ -1,13 +1,14 @@
-import { Activity, PlusCircle, Database, FileSpreadsheet, GitMerge, FileText } from 'lucide-react';
+import { Activity, PlusCircle, Database, FileSpreadsheet, GitMerge, FileText, FolderKanban, BarChart3 } from 'lucide-react';
 import { ClinicalForm } from '../types/clinical';
 
 interface NavbarProps {
-  activeTab: 'intake' | 'records' | 'builder' | 'export' | 'merge';
-  setActiveTab: (tab: 'intake' | 'records' | 'builder' | 'export' | 'merge') => void;
+  activeTab: 'intake' | 'records' | 'analytics' | 'builder' | 'export' | 'merge';
+  setActiveTab: (tab: 'intake' | 'records' | 'analytics' | 'builder' | 'export' | 'merge') => void;
   activeForm: ClinicalForm;
   forms: ClinicalForm[];
   onSelectForm: (formId: string) => void;
   onOpenTemplatesModal: () => void;
+  onOpenFormsManager: () => void;
   recordCount: number;
 }
 
@@ -18,6 +19,7 @@ export function Navbar({
   forms,
   onSelectForm,
   onOpenTemplatesModal,
+  onOpenFormsManager,
   recordCount,
 }: NavbarProps) {
   return (
@@ -33,7 +35,7 @@ export function Navbar({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-900 text-lg tracking-tight">CliniForm</span>
-                <span className="text-xs text-slate-600 font-mono">v2.4 HealthData</span>
+                <span className="text-xs text-slate-600 font-mono">v2.5 HealthData</span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
                 Captura clínica ágil, exportación tabular y fusión de bases de datos
@@ -41,8 +43,8 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Active Form Switcher */}
-          <div className="flex items-center gap-3">
+          {/* Active Form Switcher and Management Actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex flex-col items-end sm:items-start">
               <label htmlFor="form-select" className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
                 Formulario Activo
@@ -51,7 +53,7 @@ export function Navbar({
                 id="form-select"
                 value={activeForm.id}
                 onChange={(e) => onSelectForm(e.target.value)}
-                className="text-sm font-medium text-slate-900 bg-slate-50 border border-slate-300 rounded-md py-1 px-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden hover:bg-slate-100 transition-colors max-w-[210px] sm:max-w-xs truncate"
+                className="text-sm font-medium text-slate-900 bg-slate-50 border border-slate-300 rounded-md py-1 px-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden hover:bg-slate-100 transition-colors max-w-[170px] sm:max-w-xs truncate"
               >
                 {forms.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -62,9 +64,21 @@ export function Navbar({
             </div>
 
             <button
+              onClick={onOpenFormsManager}
+              title="Gestionar mis formularios, duplicar, copias de seguridad y papelera"
+              className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 hover:text-teal-900 transition-colors flex items-center gap-1.5 shadow-2xs"
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-teal-700" />
+              <span className="hidden md:inline">Mis Formularios</span>
+              <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200">
+                {forms.length}
+              </span>
+            </button>
+
+            <button
               onClick={onOpenTemplatesModal}
-              title="Cargar o cambiar plantilla clínica"
-              className="px-3 py-1.5 text-xs font-medium text-teal-800 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors flex items-center gap-1.5"
+              title="Cargar o cambiar plantilla clínica predefinida"
+              className="px-2.5 py-1.5 text-xs font-medium text-teal-800 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors flex items-center gap-1.5"
             >
               <FileText className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Plantillas</span>
@@ -103,6 +117,18 @@ export function Navbar({
             >
               {recordCount}
             </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+              activeTab === 'analytics'
+                ? 'bg-teal-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Estadísticas / Calidad</span>
           </button>
 
           <button

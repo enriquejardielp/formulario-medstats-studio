@@ -12,10 +12,13 @@ import {
   ChevronRight,
   Hash,
   GitBranch,
+  ClipboardPaste,
+  FileText,
 } from 'lucide-react';
 import { ClinicalForm, FormField, RecordEntry } from '../types/clinical';
 import { calculateFieldValue, checkClinicalAlert } from '../utils/calculator';
 import { isConditionMet } from '../utils/conditional';
+import { TextExtractorModal } from './TextExtractorModal';
 
 interface IntakeFormProps {
   form: ClinicalForm;
@@ -37,7 +40,31 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [savedSuccessMsg, setSavedSuccessMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isTextExtractorOpen, setIsTextExtractorOpen] = useState(false);
+  const [textExtractorSection, setTextExtractorSection] = useState<string | null>(null);
   const firstInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleOpenTextExtractor = (sectionName: string | null = null) => {
+    setTextExtractorSection(sectionName);
+    setIsTextExtractorOpen(true);
+  };
+
+  const handleApplyExtractedData = (dataToMerge: Record<string, any>) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...dataToMerge,
+    }));
+
+    setErrors((prev) => {
+      const copy = { ...prev };
+      Object.keys(dataToMerge).forEach((k) => delete copy[k]);
+      return copy;
+    });
+
+    const count = Object.keys(dataToMerge).length;
+    setSavedSuccessMsg(`✨ Se han autocompletado ${count} ${count === 1 ? 'variable clínica' : 'variables clínicas'} desde el texto libre.`);
+    setTimeout(() => setSavedSuccessMsg(null), 4500);
+  };
 
   // Sync default values when form changes or resets
   useEffect(() => {
@@ -221,7 +248,17 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
         </div>
 
         {/* Global actions & keyboard tip */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => handleOpenTextExtractor(null)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white text-teal-800 border border-teal-300 hover:bg-teal-50 rounded-md text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            title="Pegar analítica completa, informe de ecocardiograma o antecedentes para autocompletar el caso"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Rellenar desde Texto Libre</span>
+          </button>
+
           <div className="hidden lg:flex items-center text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5">
             <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono mr-1 shadow-2xs">
               Ctrl
@@ -235,7 +272,7 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
 
           <button
             onClick={() => handleSubmit(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium text-sm shadow-xs transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium text-sm shadow-xs transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>Guardar y Siguiente</span>
@@ -338,7 +375,7 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
               id={`section-card-${sectionTitle.replace(/\s+/g, '-')}`}
               className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs scroll-mt-20"
             >
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-teal-600"></span>
                   <h2 className="text-sm font-bold text-slate-900 tracking-tight">
@@ -351,9 +388,21 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-slate-600 font-mono">
-                  {fields.length} {fields.length === 1 ? 'variable' : 'variables'}
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTextExtractor(sectionTitle)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-md transition-colors shadow-2xs cursor-pointer"
+                    title={`Pegar informe o analítica para autocompletar la sección ${sectionTitle}`}
+                  >
+                    <ClipboardPaste className="w-3.5 h-3.5 text-teal-700" />
+                    <span>Pegar texto en esta sección</span>
+                  </button>
+                  <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+                    {fields.length} {fields.length === 1 ? 'variable' : 'variables'}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
@@ -686,6 +735,16 @@ export function IntakeForm({ form, records, onSaveRecord, onGoToRecords }: Intak
           </div>
         </div>
       </div>
+
+      {/* Free-Text Clinical Data Extractor Modal */}
+      <TextExtractorModal
+        isOpen={isTextExtractorOpen}
+        onClose={() => setIsTextExtractorOpen(false)}
+        form={form}
+        targetSection={textExtractorSection}
+        currentFormData={activeFullData}
+        onApplyExtractedData={handleApplyExtractedData}
+      />
     </div>
   );
 }

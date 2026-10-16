@@ -9,6 +9,18 @@
     <meta property="og:description" content="Diseña formularios clínicos personalizados para investigación y práctica médica, agiliza la recolección caso por caso y exporta/fusiona tus bases de datos en Excel y CSV." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Silence Vite HMR WebSocket disconnections in iFrame environment
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason && (
+          event.reason.message?.includes('WebSocket') ||
+          event.reason.stack?.includes('@vite/client') ||
+          event.reason.message?.includes('vite')
+        )) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

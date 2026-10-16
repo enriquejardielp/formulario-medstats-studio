@@ -9,9 +9,11 @@ import {
   X,
   Save,
   CheckCircle,
+  FileText,
 } from 'lucide-react';
 import { ClinicalForm, RecordEntry } from '../types/clinical';
 import { exportToExcel, exportToCSV } from '../utils/exporter';
+import { PatientReportModal } from './PatientReportModal';
 
 interface DataTableProps {
   form: ClinicalForm;
@@ -32,6 +34,7 @@ export function DataTable({
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecordForEdit, setSelectedRecordForEdit] = useState<RecordEntry | null>(null);
+  const [selectedRecordForReport, setSelectedRecordForReport] = useState<RecordEntry | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [editCode, setEditCode] = useState('');
 
@@ -230,8 +233,15 @@ export function DataTable({
                     <td className="py-2.5 px-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          onClick={() => setSelectedRecordForReport(rec)}
+                          className="p-1 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded cursor-pointer"
+                          title="Ver e imprimir ficha clínica del paciente"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleOpenEdit(rec)}
-                          className="p-1 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded"
+                          className="p-1 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded cursor-pointer"
                           title="Editar caso"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -242,7 +252,7 @@ export function DataTable({
                               onDeleteRecord(rec.id);
                             }
                           }}
-                          className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                          className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
                           title="Eliminar registro"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -368,6 +378,14 @@ export function DataTable({
           </div>
         </div>
       )}
+
+      {/* Printable Individual Clinical Case Report Modal */}
+      <PatientReportModal
+        isOpen={!!selectedRecordForReport}
+        onClose={() => setSelectedRecordForReport(null)}
+        form={form}
+        record={selectedRecordForReport}
+      />
     </div>
   );
 }

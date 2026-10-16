@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { ClinicalForm, RecordEntry, FavoriteSection } from './types/clinical';
+import { ClinicalForm, RecordEntry, FavoriteSection, TrashItem } from './types/clinical';
 import {
   getSavedForms,
   saveForms,
@@ -15,6 +15,10 @@ import {
   getFavoriteSections,
   addFavoriteSection,
   deleteFavoriteSection,
+  getTrashItems,
+  moveFormToTrash,
+  restoreFormFromTrash,
+  duplicateForm,
 } from './utils/storage';
 import { generateSampleRecords } from './utils/exporter';
 import { Navbar } from './components/Navbar';
@@ -23,7 +27,9 @@ import { DataTable } from './components/DataTable';
 import { FormBuilder } from './components/FormBuilder';
 import { ExportView } from './components/ExportView';
 import { MergeView } from './components/MergeView';
+import { AnalyticsView } from './components/AnalyticsView';
 import { TemplateSelectorModal } from './components/TemplateSelectorModal';
+import { FormsManagerModal } from './components/FormsManagerModal';
 import { Sparkles, HelpCircle, Star } from 'lucide-react';
 
 export default function App() {
@@ -31,8 +37,10 @@ export default function App() {
   const [activeFormId, setActiveFormIdState] = useState<string>(() =>
     getActiveFormId(forms)
   );
-  const [activeTab, setActiveTab] = useState<'intake' | 'records' | 'builder' | 'export' | 'merge'>('intake');
+  const [activeTab, setActiveTab] = useState<'intake' | 'records' | 'analytics' | 'builder' | 'export' | 'merge'>('intake');
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [isFormsManagerOpen, setIsFormsManagerOpen] = useState(false);
+  const [trashItems, setTrashItems] = useState<TrashItem[]>(() => getTrashItems());
   const [showHelperBanner, setShowHelperBanner] = useState(true);
   const [favoriteSections, setFavoriteSections] = useState<FavoriteSection[]>(() =>
     getFavoriteSections()
@@ -188,6 +196,77 @@ export default function App() {
     setFavoriteSections(updated);
   };
 
+  // Handle duplicating an existing form
+  const handleDuplicateForm = (formId: string, cloneRecords: boolean) => {
+    const { newForm, forms: updatedForms } = duplicateForm(formId, cloneRecords);
+    setForms(updatedForms);
+    setActiveFormIdState(newForm.id);
+    const recs = getRecordsForForm(newForm);
+    setRecords(recs);
+  };
+
+  // Handle moving a form to trash (prevents data loss)
+  const handleDeleteForm = (formId: string) => {
+    const { remainingForms, trashItems: updatedTrash } = moveFormToTrash(formId);
+    setForms(remainingForms);
+    setTrashItems(updatedTrash);
+    if (remainingForms.length > 0) {
+      const nextActiveId = remainingForms[0].id;
+      setActiveFormIdState(nextActiveId);
+      setRecords(getRecordsForForm(remainingForms[0]));
+    } else {
+      setRecords([]);
+    }
+  };
+
+  // Handle restoring a form and records from trash
+  const handleRestoreFromTrash = (trashId: string) => {
+    const result = restoreFormFromTrash(trashId);
+    if (result) {
+      setForms(result.forms);
+      setTrashItems(getTrashItems());
+      setActiveFormIdState(result.restoredForm.id);
+      setRecords(getRecordsForForm(result.restoredForm));
+    }
+  };
+
+  // Handle importing a form backup JSON
+  const handleImportBackup = (jsonStr: string) => {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const incomingForm: ClinicalForm = parsed.form || parsed;
+      const incomingRecords: RecordEntry[] = parsed.records || [];
+
+      if (!incomingForm.id || !incomingForm.title || !incomingForm.fields) {
+        throw new Error('El archivo no contiene una estructura válida de CliniForm.');
+      }
+
+      // Ensure fresh ID if collision
+      const formId = forms.some((f) => f.id === incomingForm.id)
+        ? 'form-' + Date.now()
+        : incomingForm.id;
+
+      const importedForm: ClinicalForm = {
+        ...incomingForm,
+        id: formId,
+        title: forms.some((f) => f.title === incomingForm.title)
+          ? `${incomingForm.title} (Importado)`
+          : incomingForm.title,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const updatedForms = [importedForm, ...forms];
+      setForms(updatedForms);
+      saveForms(updatedForms);
+      saveRecordsForForm(importedForm.id, incomingRecords);
+      setActiveFormIdState(importedForm.id);
+      setRecords(incomingRecords);
+    } catch (e: any) {
+      console.error('Error importing backup:', e);
+      throw e;
+    }
+  };
+
   // Quick helper to generate sample records
   const handleAddSampleCases = () => {
     const samples = generateSampleRecords(activeForm, 5);
@@ -206,6 +285,7 @@ export default function App() {
         forms={forms}
         onSelectForm={(id) => setActiveFormIdState(id)}
         onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
+        onOpenFormsManager={() => setIsFormsManagerOpen(true)}
         recordCount={records.length}
       />
 
@@ -227,14 +307,14 @@ export default function App() {
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={handleAddSampleCases}
-                className="text-[11px] font-semibold text-teal-200 hover:text-white underline"
+                className="text-[11px] font-semibold text-teal-200 hover:text-white underline cursor-pointer"
                 title="Generar 5 registros de prueba aleatorios"
               >
                 + Generar 5 casos de prueba
               </button>
               <button
                 onClick={() => setShowHelperBanner(false)}
-                className="text-teal-400 hover:text-white"
+                className="text-teal-400 hover:text-white cursor-pointer"
                 title="Ocultar aviso"
               >
                 ✕
@@ -266,6 +346,10 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'analytics' && (
+          <AnalyticsView form={activeForm} records={records} />
+        )}
+
         {activeTab === 'builder' && (
           <FormBuilder
             form={activeForm}
@@ -288,6 +372,31 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Forms Manager Modal (All forms, duplicates, trash bin, backup/restore) */}
+      <FormsManagerModal
+        isOpen={isFormsManagerOpen}
+        onClose={() => setIsFormsManagerOpen(false)}
+        forms={forms}
+        activeFormId={activeForm.id}
+        onSelectForm={(id) => {
+          setActiveFormIdState(id);
+          setIsFormsManagerOpen(false);
+        }}
+        onDuplicateForm={handleDuplicateForm}
+        onDeleteForm={handleDeleteForm}
+        onOpenTemplates={() => {
+          setIsFormsManagerOpen(false);
+          setIsTemplatesModalOpen(true);
+        }}
+        onCreateNew={() => {
+          setIsFormsManagerOpen(false);
+          handleCreateNewForm('Nuevo Formulario Clínico', 'PAC-');
+        }}
+        trashItems={trashItems}
+        onRestoreFromTrash={handleRestoreFromTrash}
+        onImportBackup={handleImportBackup}
+      />
 
       {/* Clinical Template Selector Modal */}
       <TemplateSelectorModal

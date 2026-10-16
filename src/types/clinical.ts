@@ -116,3 +116,18 @@ export interface MergeReport {
   newColumns: string[];
   timestamp: string;
 }
+
+export interface FormBackup {
+  id: string;
+  form: ClinicalForm;
+  records: RecordEntry[];
+  timestamp: string;
+  reason: string;
+}
+
+export interface TrashItem {
+  id: string;
+  form: ClinicalForm;
+  records: RecordEntry[];
+  deletedAt: string;
+}
